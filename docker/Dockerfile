@@ -1,8 +1,7 @@
 FROM centos:7
 
-COPY ./docker/run-onearth.sh /usr/local/bin/run-vizgen.sh
-COPY ./src/vizgen/* /usr/local/bin/
-COPY ./vizgen/bin/* /usr/local/bin/
+COPY ./docker/run-vizgen.sh /usr/local/bin/run-vizgen.sh
+COPY ./bin/* /usr/local/bin/
 
 RUN yum -y install epel-release wget python3 python3-devel git gcc
 RUN wget https://github.com/nasa-gibs/onearth/releases/download/v1.4.0/onearth-1.4.0-8.el7.tar.gz
@@ -41,7 +40,7 @@ RUN pip3 install pathlib pyaml Pillow==8.1.0
 ENV LCDIR=/etc/onearth/config
 RUN sed -i 's/Order allow,deny/Require all granted/g' /etc/httpd/conf.d/onearth-demo.conf
 
-COPY ./colormaps/ /etc/onearth/colormaps
+RUN mkdir /etc/onearth/colormaps
 RUN mkdir -p /usr/share/onearth/mrfgen/configs /usr/share/onearth/mrfgen/working_dir && \
     cp /usr/share/onearth/mrfgen/Blank_RGBA_512.png /usr/share/onearth/mrfgen/transparent.png
 

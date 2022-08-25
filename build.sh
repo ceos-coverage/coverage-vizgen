@@ -7,5 +7,5 @@ source ./version.sh
 docker build \
     --no-cache \
     -f ./docker/Dockerfile \
-    -t coverage/vizgen:$COVERAGE_VERSION \
+    -t coverage/vizgen:$VIZGEN_VERSION \
     .
