@@ -22,6 +22,7 @@ import re
 import string
 from pathlib import Path
 from datetime import datetime
+from datetime import timedelta
 from vizingest import LayerConfig, get_layer_config
 
 MRF_CONFIG_TEMPLATE = string.Template("""
@@ -98,70 +99,78 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
             config.reproject = ''
 
         counter += 1
-        for var in config.vars:
-            output_file = str(Path(config.working_dir).absolute()) \
-                        + '/' + str(Path(input_file).stem) + '_' + var + '.tiff'
-            print('Creating GeoTIFF file ' + output_file)
-            if not os.path.isfile(output_file):
-                extents = config.extents.split(',')
-                gdal_translate = ['gdal_translate', '-of', 'GTiff', '-a_srs', projection, '-a_ullr',
-                                  extents[0], extents[3], extents[2], extents[1]]
-                if hasattr(config, 'nodata'):
-                    gdal_translate.append('-a_nodata')
-                    gdal_translate.append(str(config.nodata))
-                gdal_translate.append('NETCDF:'+input_file+':'+var)
-                gdal_translate.append(output_file)
-                print(gdal_translate)
-                process = subprocess.Popen(gdal_translate, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                process.wait()
-                for output in process.stdout:
-                    print(output.decode())
-                for error in process.stderr:
-                    print(error.decode())
-                print('Created GeoTIFF ' + output_file)
-
-            if create_cog:
-                cog_file = str(Path(config.working_dir).absolute()) \
-                        + '/' + str(Path(input_file).stem) + '_' + var + '.cog.tiff'
-                print('Creating Cloud-Optimized GeoTIFF file ' + cog_file)
-                gdal_translate = ['gdal_translate', '-of', 'COG', '-co', 'COMPRESS=LZW', output_file, cog_file]
-                print(gdal_translate)
-                process = subprocess.Popen(gdal_translate, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                process.wait()
-                for output in process.stdout:
-                    print(output.decode())
-                for error in process.stderr:
-                    print(error.decode())
-                print('Created GeoTIFF ' + cog_file)
-
-            if config.colormap_prefix is not None:
-                print('Coloring ' + output_file)
-                colormap = f'{config.colormap_prefix}_{var}.txt'
-                colormap_xml = f'{config.colormap_prefix}_{var}.xml'
-                output_file_colored = str(Path(config.working_dir).absolute()) \
-                    + '/' + str(Path(input_file).stem) + '_' + var + '_.tiff'
-                if process_existing or not os.path.isfile(output_file_colored):
-                    print(f'Using colormap:{colormap}')
-                    gdaldem_command_list = ['gdaldem', 'color-relief', '-alpha', '-nearest_color_entry',
-                                            output_file, colormap, output_file_colored]
-                    process = subprocess.Popen(gdaldem_command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for band, time in enumerate(config.time_bands):
+            if time != '':
+                bandstring = '_b' + str(band+1)
+            else:
+                bandstring = ''
+            for var in config.vars:
+                output_file = str(Path(config.working_dir).absolute()) \
+                            + '/' + str(Path(input_file).stem) + '_' + var + bandstring + '.tiff'
+                print('Creating GeoTIFF file ' + output_file)
+                if not os.path.isfile(output_file):
+                    extents = config.extents.split(',')
+                    gdal_translate = ['gdal_translate', '-of', 'GTiff', '-a_srs', projection, '-a_ullr',
+                                      extents[0], extents[3], extents[2], extents[1]]
+                    if hasattr(config, 'nodata'):
+                        gdal_translate.append('-a_nodata')
+                        gdal_translate.append(str(config.nodata))
+                    if time != '':
+                        gdal_translate.append('-b')
+                        gdal_translate.append(str(band+1))
+                    gdal_translate.append('NETCDF:'+input_file+':'+var)
+                    gdal_translate.append(output_file)
+                    print(gdal_translate)
+                    process = subprocess.Popen(gdal_translate, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                     process.wait()
                     for output in process.stdout:
                         print(output.decode())
                     for error in process.stderr:
                         print(error.decode())
-                    if process.returncode == 0:  # delete if there are no errors
-                        print('Created GeoTIFF ' + output_file_colored)
-                        try:
-                            print('Deleting file ' + output_file)
-                            os.remove(output_file)
-                        except FileNotFoundError as ex:
-                            print(ex)
-                output_files.append(output_file_colored)
-                create_mrf([output_file_colored], config, config.layer_prefix + '_' + var, colormap_xml)
-            else:
-                output_files.append(output_file)
-                create_mrf([output_file], config, config.layer_prefix + '_' + var, colormap_xml)
+                    print('Created GeoTIFF ' + output_file)
+    
+                if create_cog:
+                    cog_file = str(Path(config.working_dir).absolute()) \
+                            + '/' + str(Path(input_file).stem) + '_' + var + '.cog.tiff'
+                    print('Creating Cloud-Optimized GeoTIFF file ' + cog_file)
+                    gdal_translate = ['gdal_translate', '-of', 'COG', '-co', 'COMPRESS=LZW', output_file, cog_file]
+                    print(gdal_translate)
+                    process = subprocess.Popen(gdal_translate, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    process.wait()
+                    for output in process.stdout:
+                        print(output.decode())
+                    for error in process.stderr:
+                        print(error.decode())
+                    print('Created GeoTIFF ' + cog_file)
+    
+                if config.colormap_prefix is not None:
+                    print('Coloring ' + output_file)
+                    colormap = f'{config.colormap_prefix}_{var}.txt'
+                    colormap_xml = f'{config.colormap_prefix}_{var}.xml'
+                    output_file_colored = str(Path(config.working_dir).absolute()) \
+                        + '/' + str(Path(input_file).stem) + '_' + var + bandstring + '_.tiff'
+                    if process_existing or not os.path.isfile(output_file_colored):
+                        print(f'Using colormap:{colormap}')
+                        gdaldem_command_list = ['gdaldem', 'color-relief', '-alpha', '-nearest_color_entry',
+                                                output_file, colormap, output_file_colored]
+                        process = subprocess.Popen(gdaldem_command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        process.wait()
+                        for output in process.stdout:
+                            print(output.decode())
+                        for error in process.stderr:
+                            print(error.decode())
+                        if process.returncode == 0:  # delete if there are no errors
+                            print('Created GeoTIFF ' + output_file_colored)
+                            try:
+                                print('Deleting file ' + output_file)
+                                os.remove(output_file)
+                            except FileNotFoundError as ex:
+                                print(ex)
+                    output_files.append(output_file_colored)
+                    create_mrf([output_file_colored], config, config.layer_prefix + '_' + var, colormap_xml)
+                else:
+                    output_files.append(output_file)
+                    create_mrf([output_file], config, config.layer_prefix + '_' + var, colormap_xml)
         if temp_nc:
             try:
                 print('Deleting file ' + temp_nc)
@@ -209,6 +218,10 @@ def create_mrf(input_files, config, layer_name, colormap):
             date_of_data = date.strftime('%Y%m%d')
             print('Detected date: ' + date_of_data)
             time_of_data = date.strftime('%H%M%S')
+            if config.time_bands != [''] and '_b' in filename:
+                band = int(filename.split('_b')[1].split('_')[0]) - 1
+                addtime = config.time_bands[band]
+                time_of_data = (date + timedelta(seconds=addtime)).strftime('%H%M%S')
             output_dir = config.output_dir + '/' + layer_name + '/' + str(date.year)
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)

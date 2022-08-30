@@ -56,6 +56,7 @@ class LayerConfig():
         self.dimensions = layer_config.get('dimensions')
         self.s_srs = layer_config.get('s_srs')
         self.t_srs = layer_config.get('t_srs', 'EPSG:4326')
+        self.time_bands = layer_config.get('time_bands', [''])
 
     def __str__(self):
         return str(self.__dict__)
@@ -73,6 +74,9 @@ def crawl_files(input_dir):
     if os.path.isdir(input_dir):
         for path in Path(input_dir).rglob('*.nc'):
             if not os.path.isfile(path.name.replace('.nc', '.skip')):
+                input_files.append(str(path.absolute()))
+        for path in Path(input_dir).rglob('*.nc4'):
+            if not os.path.isfile(path.name.replace('.nc4', '.skip')):
                 input_files.append(str(path.absolute()))
     else:
         input_files = [input_dir]
