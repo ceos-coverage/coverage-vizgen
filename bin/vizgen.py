@@ -128,7 +128,7 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                     for error in process.stderr:
                         print(error.decode())
                     print('Created GeoTIFF ' + output_file)
-    
+
                 if create_cog:
                     cog_file = str(Path(config.working_dir).absolute()) \
                             + '/' + str(Path(input_file).stem) + '_' + var + '.cog.tiff'
@@ -142,7 +142,7 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                     for error in process.stderr:
                         print(error.decode())
                     print('Created GeoTIFF ' + cog_file)
-    
+
                 if config.colormap_prefix is not None:
                     print('Coloring ' + output_file)
                     colormap = f'{config.colormap_prefix}_{var}.txt'
