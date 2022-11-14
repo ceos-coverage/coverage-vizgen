@@ -20,8 +20,8 @@ RUN conda install -c conda-forge -y gdal==3.4.0 \
     && conda clean --all --yes
 
 # Get newer version of mrfgen
-RUN git clone https://github.com/nasa-gibs/onearth.git -b 2.6.2 --single-branch
-ENV ONEARTH_VERSION 2.6.2
+RUN git clone https://github.com/nasa-gibs/onearth.git -b 2.6.3 --single-branch
+ENV ONEARTH_VERSION 2.6.3
 WORKDIR /onearth/src/mrfgen
 
 RUN python3 -m pip install --user --upgrade cython
@@ -36,7 +36,7 @@ RUN install -m 755 overtiffpacker.py -D /usr/bin/overtiffpacker.py
 RUN install -m 755 oe_validate_palette.py -D /usr/bin/oe_validate_palette.py
 RUN install -m 755 ../scripts/oe_utils.py -D /usr/bin/oe_utils.py
 
-RUN pip3 install pathlib pyaml Pillow==8.1.0
+RUN pip3 install pathlib pyaml Pillow==8.1.0 pypng awscli boto3
 ENV LCDIR=/etc/onearth/config
 RUN sed -i 's/Order allow,deny/Require all granted/g' /etc/httpd/conf.d/onearth-demo.conf
 

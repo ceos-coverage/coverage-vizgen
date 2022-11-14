@@ -57,6 +57,8 @@ class LayerConfig():
         self.s_srs = layer_config.get('s_srs')
         self.t_srs = layer_config.get('t_srs', 'EPSG:4326')
         self.time_bands = layer_config.get('time_bands', [''])
+        self.s3_prefix = layer_config.get('s3_prefix')
+        self.idx_dir = layer_config.get('idx_dir')
 
     def __str__(self):
         return str(self.__dict__)
