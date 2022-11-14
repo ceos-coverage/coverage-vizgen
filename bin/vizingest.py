@@ -51,6 +51,7 @@ class LayerConfig():
         self.nodata = layer_config.get('nodata')
         self.extents = layer_config.get('extents', '-180,-90,180,90')
         self.empty_tile = layer_config.get('empty_tile', 'transparent.png')
+        self.empty_tile_prefix = layer_config.get('empty_tile_prefix')
         self.mrf_suffix = layer_config.get('mrf_suffix', '%Y%j_.mrf')
         self.date_match = layer_config.get('date_match', '%Y%m%d')
         self.dimensions = layer_config.get('dimensions')

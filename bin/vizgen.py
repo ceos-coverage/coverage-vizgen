@@ -145,6 +145,11 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                         print(error.decode())
                     print('Created GeoTIFF ' + cog_file)
 
+                if config.empty_tile_prefix is not None:
+                    empty_tile = config.empty_tile_prefix + '_' + var + '.png'
+                else:
+                    empty_tile = config.empty_tile
+
                 if config.colormap_prefix is not None:
                     print('Coloring ' + output_file)
                     colormap = f'{config.colormap_prefix}_{var}.txt'
@@ -169,10 +174,10 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                             except FileNotFoundError as ex:
                                 print(ex)
                     output_files.append(output_file_colored)
-                    create_mrf([output_file_colored], config, config.layer_prefix + '_' + var, colormap_xml)
+                    create_mrf([output_file_colored], config, config.layer_prefix + '_' + var, colormap_xml, empty_tile)
                 else:
                     output_files.append(output_file)
-                    create_mrf([output_file], config, config.layer_prefix + '_' + var, colormap_xml)
+                    create_mrf([output_file], config, config.layer_prefix + '_' + var, colormap_xml, empty_tile)
         if temp_nc:
             try:
                 print('Deleting file ' + temp_nc)
@@ -186,7 +191,7 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
     return output_files
 
 
-def create_mrf(input_files, config, layer_name, colormap):
+def create_mrf(input_files, config, layer_name, colormap, empty_tile):
     if not os.path.exists(config.working_dir + '/' + 'configs/'):
         os.makedirs(config.working_dir + '/' + 'configs/')
     if not os.path.exists(config.working_dir + '/' + 'logs/'):
@@ -237,7 +242,7 @@ def create_mrf(input_files, config, layer_name, colormap):
                                                       colormap=colormap,
                                                       target_x=config.target_x,
                                                       extents=config.extents,
-                                                      empty_tile=config.empty_tile,
+                                                      empty_tile=empty_tile,
                                                       reproject=config.reproject,
                                                       mrf_suffix=config.mrf_suffix)
             conf.write(xml)
@@ -257,7 +262,7 @@ def create_mrf(input_files, config, layer_name, colormap):
                 data_file = outfile + '.ppg'
                 idx_file = outfile + '.idx'
                 # upload to s3 if prefix specified
-                if config.s3_prefix:
+                if config.s3_prefix is not None:
                     print('Uploading to ' + config.s3_prefix)
                     s3_client = boto3.client('s3')
                     s3_url = urlparse(config.s3_prefix, allow_fragments=False)
@@ -277,7 +282,7 @@ def create_mrf(input_files, config, layer_name, colormap):
                                                           key=s3_path_idx)
                     print(data_response)
                 # move idx file if specified
-                if config.idx_dir:
+                if config.idx_dir is not None:
                     outidx = config.idx_dir + '/' + layer_name + '/' + str(date.year) + '/' + idx_file
                     os.rename(output_dir + '/' + idx_file, outidx)
                     print('Moved ' + idx_file + ' to ' + config.idx_dir)
