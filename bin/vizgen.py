@@ -270,9 +270,9 @@ def create_mrf(input_files, config, layer_name, colormap, empty_tile):
                         s3_prefix = config.s3_prefix + '/' + layer_name + '/' + str(date.year)
                         s3_client = boto3.client('s3')
                         s3_url = urlparse(s3_prefix, allow_fragments=False)
-                        s3_path_mrf = s3_url.path + mrf_file
-                        s3_path_data = s3_url.path + data_file
-                        s3_path_idx = s3_url.path + idx_file
+                        s3_path_mrf = os.path.normpath(s3_url.path + '/' + mrf_file).lstrip('/')
+                        s3_path_data = os.path.normpath(s3_url.path + '/' + data_file).lstrip('/')
+                        s3_path_idx = os.path.normpath(s3_url.path + '/' + idx_file).lstrip('/')
                         print('Uploading ' + s3_path_mrf)
                         mrf_response = s3_client.upload_file(output_dir + '/' + mrf_file,
                                                              s3_url.netloc,
