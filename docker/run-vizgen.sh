@@ -10,6 +10,8 @@ oe_configure_layer --create_mapfile --layer_dir=/etc/onearth/config/layers/ --ge
 echo 'Starting Apache server'
 /usr/sbin/httpd -k start
 
+supercronic /vizgen/crontab &
+
 # Tail the apache logs
 exec tail -qF \
   /etc/httpd/logs/access.log \

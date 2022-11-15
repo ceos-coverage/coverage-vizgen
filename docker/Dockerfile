@@ -47,6 +47,20 @@ RUN mkdir -p /usr/share/onearth/mrfgen/configs /usr/share/onearth/mrfgen/working
 RUN chmod -R 755 /usr/share/onearth/mrfgen/
 WORKDIR /vizgen/
 RUN rm -rf /onearth/
+RUN mkdir /vizgen/logs/
+COPY ./docker/crontab /vizgen/crontab
+COPY ./docker/cron.sh /vizgen/cron.sh
+
+# Install supercronic
+ENV SUPERCRONIC_URL=https://github.com/aptible/supercronic/releases/download/v0.1.12/supercronic-linux-amd64 \
+    SUPERCRONIC=supercronic-linux-amd64 \
+    SUPERCRONIC_SHA1SUM=048b95b48b708983effb2e5c935a1ef8483d9e3e
+
+RUN curl -fsSLO "$SUPERCRONIC_URL" \
+ && echo "${SUPERCRONIC_SHA1SUM}  ${SUPERCRONIC}" | sha1sum -c - \
+ && chmod +x "$SUPERCRONIC" \
+ && mv "$SUPERCRONIC" "/usr/local/bin/${SUPERCRONIC}" \
+ && ln -s "/usr/local/bin/${SUPERCRONIC}" /usr/local/bin/supercronic
 
 # Start HTTPD server
 CMD sh /usr/local/bin/run-vizgen.sh

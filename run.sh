@@ -12,6 +12,8 @@ docker run -it \
 	-v $(pwd)/empty_tiles/:/vizgen/empty_tiles/ \
     -v $(pwd)/output/:/vizgen/output/ \
     -v $(pwd)/working/:/vizgen/working/ \
+    -v $(pwd)/idx/:/granules/idx/ \
+    -v $(pwd)/cron.sh:/vizgen/cron.sh \
     coverage/vizgen:$VIZGEN_VERSION /bin/bash
 
     
