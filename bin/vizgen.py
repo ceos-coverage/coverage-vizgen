@@ -19,8 +19,10 @@ import subprocess
 import sys
 import argparse
 import re
+import shutil
 import string
 import boto3
+from botocore.exceptions import ClientError, NoCredentialsError
 from pathlib import Path
 from datetime import datetime
 from datetime import timedelta
@@ -257,35 +259,50 @@ def create_mrf(input_files, config, layer_name, colormap, empty_tile):
             if process.returncode == 0:  # delete if there are no errors
                 print('Deleting file ' + input_file)
                 os.remove(input_file)
-                outfile = layer_name + config.mrf_suffix
+                outfile = layer_name + config.mrf_suffix.split('.mrf')[0].replace('%Y%j%H%M%S',date.strftime('%Y%j%H%M%S'))
                 mrf_file = outfile + '.mrf'
                 data_file = outfile + '.ppg'
                 idx_file = outfile + '.idx'
                 # upload to s3 if prefix specified
                 if config.s3_prefix is not None:
-                    print('Uploading to ' + config.s3_prefix)
-                    s3_client = boto3.client('s3')
-                    s3_url = urlparse(config.s3_prefix, allow_fragments=False)
-                    s3_path_mrf = s3_url.path + '/' + mrf_file
-                    s3_path_data = s3_url.path + '/' + data_file
-                    s3_path_idx = s3_url.path + '/' + idx_file
-                    mrf_response = s3_client.upload_file(filename=output_dir + '/' + mrf_file,
-                                                         bucket=s3_url.netloc,
-                                                         key=s3_path_mrf)
-                    print(mrf_response)
-                    data_response = s3_client.upload_file(filename=output_dir + '/' + data_file,
-                                                          bucket=s3_url.netloc,
-                                                          key=s3_path_data)
-                    print(data_response)
-                    data_response = s3_client.upload_file(filename=output_dir + '/' + idx_file,
-                                                          bucket=s3_url.netloc,
-                                                          key=s3_path_idx)
-                    print(data_response)
+                    try:
+                        print('Uploading to ' + config.s3_prefix)
+                        s3_prefix = config.s3_prefix + '/' + layer_name + '/' + str(date.year)
+                        s3_client = boto3.client('s3')
+                        s3_url = urlparse(s3_prefix, allow_fragments=False)
+                        s3_path_mrf = s3_url.path + mrf_file
+                        s3_path_data = s3_url.path + data_file
+                        s3_path_idx = s3_url.path + idx_file
+                        print('Uploading ' + s3_path_mrf)
+                        mrf_response = s3_client.upload_file(output_dir + '/' + mrf_file,
+                                                             s3_url.netloc,
+                                                             s3_path_mrf)
+                        print(mrf_response)
+                        print('Uploading ' + s3_path_data)
+                        data_response = s3_client.upload_file(output_dir + '/' + data_file,
+                                                              s3_url.netloc,
+                                                              s3_path_data)
+                        print(data_response)
+                        print('Uploading ' + s3_path_idx)
+                        data_response = s3_client.upload_file(output_dir + '/' + idx_file,
+                                                              s3_url.netloc,
+                                                              s3_path_idx)
+                        print(data_response)
+                        os.remove(output_dir + '/' + mrf_file)
+                        os.remove(output_dir + '/' + data_file)
+                        if config.idx_dir is None:
+                            os.remove(output_dir + '/' + idx_file)
+                    except ClientError as ex:
+                        print(ex)
+                    except NoCredentialsError as ex:
+                        print(ex)
                 # move idx file if specified
                 if config.idx_dir is not None:
-                    outidx = config.idx_dir + '/' + layer_name + '/' + str(date.year) + '/' + idx_file
-                    os.rename(output_dir + '/' + idx_file, outidx)
-                    print('Moved ' + idx_file + ' to ' + config.idx_dir)
+                    out_idx_dir = os.path.normpath(config.idx_dir + '/' + layer_name + '/' + str(date.year))
+                    if not os.path.exists(out_idx_dir):
+                        os.makedirs(out_idx_dir)
+                    shutil.move(os.path.normpath(output_dir + '/' + idx_file), out_idx_dir + '/' + idx_file)
+                    print('Moved ' + idx_file + ' to ' + out_idx_dir)
 
         except FileNotFoundError as ex:
             print(ex)
