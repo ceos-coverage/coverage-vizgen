@@ -93,6 +93,30 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
             print('Created temp NetCDF ' + temp_nc)
             input_file = temp_nc
 
+        # check if we need to to calculate speed var
+        temp_nc = None
+        if config.speed_vars:
+            dimensions = ','.join(config.dimensions)
+            temp_nc = str(Path(config.working_dir).absolute()) \
+                + '/' + str(Path(input_file).stem) + '_speed.nc'
+            print('Created temp NetCDF ' + temp_nc)
+            calc = 'speed=sqrt(pow(' + config.speed_vars[0] + ',2)+pow(' + config.speed_vars[1] + ',2))'
+            # ncap2 -v -O -s 'speed=sqrt(pow(uwnd,2)+pow(vwnd,2))' infile.nc outfile.nc
+            ncpdq = ['ncap2', '-v', '-O', '-s', calc, input_file, temp_nc]
+            print(ncpdq)
+            process = subprocess.Popen(ncpdq, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            process.wait()
+            for output in process.stdout:
+                print(output.decode())
+            for error in process.stderr:
+                print(error.decode())
+            print('Created temp NetCDF ' + temp_nc)
+            input_file = temp_nc
+            # replace uv vars
+            for speed_var in config.speed_vars:
+                config.vars.remove(speed_var)
+            config.vars.append('speed')
+
         # check if we need to reproject
         if config.s_srs:
             projection = config.s_srs
@@ -112,6 +136,7 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                 output_file = str(Path(config.working_dir).absolute()) \
                             + '/' + str(Path(input_file).stem) + '_' + var + bandstring + '.tiff'
                 print('Creating GeoTIFF file ' + output_file)
+
                 if not os.path.isfile(output_file):
                     extents = config.extents.split(',')
                     gdal_translate = ['gdal_translate', '-of', 'GTiff', '-a_srs', projection, '-a_ullr',
@@ -132,6 +157,23 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                     for error in process.stderr:
                         print(error.decode())
                     print('Created GeoTIFF ' + output_file)
+
+                    if config.is360:
+                        print('Converting coordinates from 0 - 360 to -180 - 180')
+                        output_file_360 = output_file.replace('.tiff', '_360.tiff')
+                        print('Creating GeoTIFF file ' + output_file_360)
+                        gdal_warp = ['gdalwarp', '-t_srs', 'WGS84', '-te', '-180', '-90', '180', '90', output_file,
+                                     output_file_360, '-wo', 'SOURCE_EXTRA=1000', '--config', 'CENTER_LONG', '0']
+                        print(gdal_warp)
+                        process = subprocess.Popen(gdal_warp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                        process.wait()
+                        for output in process.stdout:
+                            print(output.decode())
+                        for error in process.stderr:
+                            print(error.decode())
+                        print('Created GeoTIFF ' + output_file_360)
+                        shutil.move(output_file_360, output_file)
+                        print('Replaced ' + output_file)
 
                 if create_cog:
                     cog_file = str(Path(config.working_dir).absolute()) \
@@ -259,7 +301,8 @@ def create_mrf(input_files, config, layer_name, colormap, empty_tile):
             if process.returncode == 0:  # delete if there are no errors
                 print('Deleting file ' + input_file)
                 os.remove(input_file)
-                outfile = layer_name + config.mrf_suffix.split('.mrf')[0].replace('%Y%j%H%M%S',date.strftime('%Y%j%H%M%S'))
+                outfile = layer_name + config.mrf_suffix.split('.mrf')[0].replace('%Y%j%H%M%S',
+                                                                                  date.strftime('%Y%j%H%M%S'))
                 mrf_file = outfile + '.mrf'
                 data_file = outfile + '.ppg'
                 idx_file = outfile + '.idx'

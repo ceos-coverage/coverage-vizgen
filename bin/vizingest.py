@@ -60,6 +60,8 @@ class LayerConfig():
         self.time_bands = layer_config.get('time_bands', [''])
         self.s3_prefix = layer_config.get('s3_prefix')
         self.idx_dir = layer_config.get('idx_dir')
+        self.is360 = layer_config.get('is360', False)
+        self.speed_vars = layer_config.get('speed_vars')
 
     def __str__(self):
         return str(self.__dict__)
