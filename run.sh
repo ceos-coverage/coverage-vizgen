@@ -3,7 +3,7 @@
 # Set COVERAGE version and release
 source ./version.sh
 
-docker run -it \
+docker run -d \
     --restart unless-stopped \
     --name coverage-vizgen \
 	-v $(pwd)/colormaps/:/vizgen/colormaps/ \
