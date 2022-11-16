@@ -74,7 +74,7 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
         if (os.path.isfile(skip_file) and process_existing is False) or (counter > limit and limit is not -1):
             print(f'Skipping {input_file}')
             continue
-
+        vars = config.vars.copy()
         # check if we need to fix dimensions
         temp_nc = None
         if config.dimensions:
@@ -114,8 +114,8 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
             input_file = temp_nc
             # replace uv vars
             for speed_var in config.speed_vars:
-                config.vars.remove(speed_var)
-            config.vars.append('speed')
+                vars.remove(speed_var)
+            vars.append('speed')
 
         # check if we need to reproject
         if config.s_srs:
@@ -132,7 +132,7 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                 bandstring = '_b' + str(band+1)
             else:
                 bandstring = ''
-            for var in config.vars:
+            for var in vars:
                 output_file = str(Path(config.working_dir).absolute()) \
                             + '/' + str(Path(input_file).stem) + '_' + var + bandstring + '.tiff'
                 print('Creating GeoTIFF file ' + output_file)
