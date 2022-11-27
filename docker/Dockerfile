@@ -36,7 +36,8 @@ RUN install -m 755 overtiffpacker.py -D /usr/bin/overtiffpacker.py
 RUN install -m 755 oe_validate_palette.py -D /usr/bin/oe_validate_palette.py
 RUN install -m 755 ../scripts/oe_utils.py -D /usr/bin/oe_utils.py
 
-RUN pip3 install pathlib pyaml Pillow==8.1.0 pypng awscli boto3 matplotlib lxml
+COPY ./requirements.txt /tmp/requirements.txt
+RUN pip3 install -r /tmp/requirements.txt
 ENV LCDIR=/etc/onearth/config
 RUN sed -i 's/Order allow,deny/Require all granted/g' /etc/httpd/conf.d/onearth-demo.conf
 
