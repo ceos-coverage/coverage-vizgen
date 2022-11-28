@@ -1,19 +1,19 @@
 # COVERAGE Visualization Generation Pipeline
 
-The COVERAGE Visualization Generation Pipeline (coverage-vizgen) is a software package containing a comprehensive set of utility tools for generating tiled map imagery in the Meta Raster Format from NetCDF data files. It is packaged as a Docker container that may be configured to automatically produce imagery from a forward data stream of NetCDF files. This software was developed for the CEOS Ocean Variables Enabling Research and Applications for GEO (COVERAGE) initiative.
+The COVERAGE Visualization Generation Pipeline (coverage-vizgen) is a software package containing a comprehensive set of utility tools for generating tiled map imagery in the Meta Raster Format (MRF) from NetCDF data files. It is packaged as a Docker container that may be configured to automatically produce imagery from a forward data stream of NetCDF files. This software was developed for the CEOS Ocean Variables Enabling Research and Applications for GEO (COVERAGE) initiative.
 
 ## Tools
 
 The included tools are:
 
-* vizingest.py - Checks for new input files and kicks off vizgen when found
-* vizgen.py - Reads NetCDF files and generates MRF visualizations based on dataset configuration
-* vizcolormapgen.py - Generates txt and xml colormaps from common Matplotlib colormaps
-* vizclean.py - Removes NetCDF files that have already been processed
+* **vizingest.py** - Checks for new input files and kicks off vizgen when found
+* **vizgen.py** - Reads NetCDF files and generates MRF visualizations based on dataset configuration
+* **vizcolormapgen.py** - Generates txt and xml colormaps from common Matplotlib colormaps
+* **vizclean.py** - Removes NetCDF files that have already been processed
 
 The following are additional utilities:
 
-* color_map_gen.py - Generates txt, xml, sld, and css colormaps from an input csv containing color bins
+* **color_map_gen.py** - Generates txt, xml, sld, and css colormaps from an input csv containing color bins
 * [oe_generate_empty_tile.py](https://github.com/nasa-gibs/onearth/blob/main/src/empty_tile/README.md) - Generates an empty (nodata) tile for use by OnEarth
 
 ## Quick Start
@@ -59,7 +59,7 @@ coverage-vizgen uses a YAML dataset configuration file to specify settings for p
 * `output_dir` - Location of output MRF files
 * `nodata` - Nodata value used by the NetCDF input dataset
 * `extents` - Geospatial bounds of the dataset
-* `empty_tile` or `empty_tile_prefix` - Empty tile location used for MRF generation (use `empty_tile_prefix` when there are multiple empt_tiles for multiple variables)
+* `empty_tile` or `empty_tile_prefix` - Empty tile location used for MRF generation (use `empty_tile_prefix` when there are multiple empty tiles for multiple variables)
 * `mrf_suffix` - The suffix or timestring format used by MRF files
 * `date_match` - The timestring format found in NetCDF file names
 * `dimensions` - Used to specify dimension variable names for non-standard NetCDF files
