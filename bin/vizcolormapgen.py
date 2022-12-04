@@ -71,7 +71,7 @@ def colormapgen(output, colormap, min, max, nodata, percent):
 ''')
 
     out = open(output + '.txt', 'w+')
-    if str(nodata).isnumeric():
+    if not str(nodata) == 'nv':
         if float(nodata) <= min:
             out.write(f'{str(nodata)} 0 0 0 0\n')
     else:
@@ -89,7 +89,7 @@ def colormapgen(output, colormap, min, max, nodata, percent):
         xml_str = f'    <ColorMapEntry rgb="{str(r)},{str(g)},{str(b)}" transparent="false" label="{str(val)+("%" if percent else "")}"/>'
         xml.write(xml_str + '\n')
 
-    if str(nodata).isnumeric():
+    if not str(nodata) == 'nv':
         if float(nodata) >= max:
             out.write(f'{str(nodata)} 0 0 0 0\n')
     out.seek(0)
