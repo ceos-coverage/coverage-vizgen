@@ -136,5 +136,9 @@ if __name__ == '__main__':
     for input_file in input_files:
         if counter < limit or limit == -1:
             print(f'\nProcessing {input_file}\n')
-            vizgen.nc2tiff(input_file, config, args.process_existing, limit, args.create_cog)
+            if str(input_file).endswith('.zarr'):
+                print('zarr detected')
+                vizgen.zarr2tiff(input_file, config, args.process_existing, limit, args.create_cog)
+            else:
+                vizgen.nc2tiff(input_file, config, args.process_existing, limit, args.create_cog)
             counter += 1

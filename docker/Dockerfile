@@ -11,17 +11,18 @@ RUN yum -y install numpy proj-devel nco && yum clean all
 # Install conda
 RUN curl -sSL https://repo.anaconda.com/miniconda/Miniconda3-4.7.12.1-Linux-x86_64.sh -o /tmp/miniconda.sh \
     && bash /tmp/miniconda.sh -bfp /usr/local/ \
-    && conda install -y python=3 \
+    && conda install -y python=3.9 \
     && conda update conda \
     && conda clean --all --yes
 
 # Upgrade GDAL
-RUN conda install -c conda-forge -y gdal==3.4.0 \
+RUN conda install -c conda-forge -y gdal==3.7.1 \
     && conda clean --all --yes
 
 # Get newer version of mrfgen
 RUN git clone https://github.com/nasa-gibs/onearth.git -b 2.6.3 --single-branch
 ENV ONEARTH_VERSION 2.6.3
+ENV PROJ_LIB=/usr/local/share/proj/
 WORKDIR /onearth/src/mrfgen
 
 RUN python3 -m pip install --user --upgrade cython
@@ -38,6 +39,8 @@ RUN install -m 755 ../scripts/oe_utils.py -D /usr/bin/oe_utils.py
 
 COPY ./requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt
+RUN pip3 install fsspec
+RUN pip3 install s3fs
 ENV LCDIR=/etc/onearth/config
 RUN sed -i 's/Order allow,deny/Require all granted/g' /etc/httpd/conf.d/onearth-demo.conf
 

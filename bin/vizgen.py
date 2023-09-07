@@ -22,6 +22,7 @@ import re
 import shutil
 import string
 import boto3
+import zarr
 from botocore.exceptions import ClientError, NoCredentialsError
 from pathlib import Path
 from datetime import datetime
@@ -56,6 +57,120 @@ MRF_CONFIG_TEMPLATE = string.Template("""
 """)
 
 
+def zarr2tiff(input_file, config, process_existing=False, limit=-1, create_cog=False):
+    output_files = []
+    counter = 0
+    vars = config.vars.copy()
+    zarr_dataset = zarr.open(input_file, mode='r')
+    time_data = zarr_dataset['time']
+    if 's3://' in input_file:
+        input_file = input_file.replace('s3://', '')
+    # check if we need to reproject
+    if config.s_srs:
+        projection = config.s_srs
+        config.reproject = '<target_epsg>4326</target_epsg>' + \
+                           '<source_epsg>' + projection.split(':')[1] + '</source_epsg>'
+    else:
+        projection = config.t_srs
+        config.reproject = ''
+
+    counter += 1
+    for idx, time in enumerate(time_data):
+        if time != '':
+            datestring = '_' + datetime.fromtimestamp(time).strftime("%Y%m%d")
+        else:
+            datestring = ''
+        for var in vars:
+            output_file = str(Path(config.working_dir).absolute()) \
+                        + '/' + str(Path(input_file).stem) + '_' + var + datestring + '.tiff'
+            print('Creating GeoTIFF file ' + output_file)
+
+            if not os.path.isfile(output_file):
+                extents = config.extents.split(',')
+                gdal_translate = ['gdal_translate', '-of', 'GTiff', '-a_srs', projection, '-a_ullr',
+                                  extents[0], extents[3], extents[2], extents[1]]
+                if hasattr(config, 'nodata'):
+                    gdal_translate.append('-a_nodata')
+                    gdal_translate.append(str(config.nodata))
+                gdal_translate.append('ZARR:"/vsis3/' + input_file + '":/' + var + ':' + str(idx))
+                gdal_translate.append(output_file)
+                print(gdal_translate)
+                process = subprocess.Popen(gdal_translate, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                process.wait()
+                for output in process.stdout:
+                    print(output.decode())
+                for error in process.stderr:
+                    print(error.decode())
+                print('Created GeoTIFF ' + output_file)
+
+                if config.is360:
+                    print('Converting coordinates from 0 - 360 to -180 - 180')
+                    output_file_360 = output_file.replace('.tiff', '_360.tiff')
+                    print('Creating GeoTIFF file ' + output_file_360)
+                    gdal_warp = ['gdalwarp', '-t_srs', 'WGS84', '-te', '-180', '-90', '180', '90', output_file,
+                                 output_file_360, '-wo', 'SOURCE_EXTRA=1000', '--config', 'CENTER_LONG', '0']
+                    print(gdal_warp)
+                    process = subprocess.Popen(gdal_warp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    process.wait()
+                    for output in process.stdout:
+                        print(output.decode())
+                    for error in process.stderr:
+                        print(error.decode())
+                    print('Created GeoTIFF ' + output_file_360)
+                    shutil.move(output_file_360, output_file)
+                    print('Replaced ' + output_file)
+
+            if create_cog:
+                cog_file = str(Path(config.working_dir).absolute()) \
+                        + '/' + str(Path(input_file).stem) + '_' + var + '.cog.tiff'
+                print('Creating Cloud-Optimized GeoTIFF file ' + cog_file)
+                gdal_translate = ['gdal_translate', '-of', 'COG', '-co', 'COMPRESS=LZW', output_file, cog_file]
+                print(gdal_translate)
+                process = subprocess.Popen(gdal_translate, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                process.wait()
+                for output in process.stdout:
+                    print(output.decode())
+                for error in process.stderr:
+                    print(error.decode())
+                print('Created GeoTIFF ' + cog_file)
+
+            if config.empty_tile_prefix is not None:
+                empty_tile = config.empty_tile_prefix + '_' + var + '.png'
+            else:
+                empty_tile = config.empty_tile
+
+            if config.colormap_prefix is not None:
+                print('Coloring ' + output_file)
+                colormap = f'{config.colormap_prefix}_{var}.txt'
+                colormap_xml = f'{config.colormap_prefix}_{var}.xml'
+                output_file_colored = str(Path(config.working_dir).absolute()) \
+                    + '/' + str(Path(input_file).stem) + '_' + var + datestring + '_.tiff'
+                if process_existing or not os.path.isfile(output_file_colored):
+                    print(f'Using colormap:{colormap}')
+                    gdaldem_command_list = ['gdaldem', 'color-relief', '-alpha', '-nearest_color_entry',
+                                            output_file, colormap, output_file_colored]
+                    process = subprocess.Popen(gdaldem_command_list, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                    process.wait()
+                    for output in process.stdout:
+                        print(output.decode())
+                    for error in process.stderr:
+                        print(error.decode())
+                    if process.returncode == 0:  # delete if there are no errors
+                        print('Created GeoTIFF ' + output_file_colored)
+                        try:
+                            print('Deleting file ' + output_file)
+                            os.remove(output_file)
+                        except FileNotFoundError as ex:
+                            print(ex)
+                output_files.append(output_file_colored)
+                create_mrf([output_file_colored], config, config.layer_prefix + '_' + var, colormap_xml, empty_tile)
+            else:
+                output_files.append(output_file)
+                create_mrf([output_file], config, config.layer_prefix + '_' + var, colormap_xml, empty_tile)
+
+    return output_files
+
+
 def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=False):
     output_files = []
     counter = 0
@@ -71,7 +186,7 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
     for input_file in input_files:
         skip_file = str(Path(input_file).absolute().parent) + '/' + str(Path(input_file).stem) + '.skip'
         # skip file if it has already been processed
-        if (os.path.isfile(skip_file) and process_existing is False) or (counter > limit and limit is not -1):
+        if (os.path.isfile(skip_file) and process_existing is False) or (counter > limit and limit != -1):
             print(f'Skipping {input_file}')
             continue
         vars = config.vars.copy()
@@ -395,4 +510,8 @@ if __name__ == '__main__':
     print(f'\nUsing {args.config}\n')
     print(config)
 
-    nc2tiff(args.input_file, args.config, args.process_existing, args.limit, args.create_cog)
+    if str(args.input_file).endswith('.zarr'):
+        print('zarr detected')
+        zarr2tiff(args.input_file, args.config, args.process_existing, args.limit, args.create_cog)
+    else:
+        nc2tiff(args.input_file, args.config, args.process_existing, args.limit, args.create_cog)
