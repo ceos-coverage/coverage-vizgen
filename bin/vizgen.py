@@ -75,20 +75,34 @@ def zarr2tiff(input_file, config, process_existing=False, limit=-1, create_cog=F
         config.reproject = ''
 
     counter += 1
-    for idx, time in enumerate(time_data):
+    for idx, time in (list(enumerate(time_data))):
         if time != '':
             datestring = '_' + datetime.fromtimestamp(time).strftime("%Y%m%d")
+            doystring = datetime.fromtimestamp(time).strftime("%Y%j%H%M%S")
         else:
             datestring = ''
+            doystring = ''
         for var in vars:
+            # check if already processed
+            print('\nChecking existing files in ' + config.output_dir + '/' + config.layer_prefix + '_' + var)
+            mrfs = Path(config.output_dir + '/' + config.layer_prefix + '_' + var).rglob('*')
+            skip = False
+            for mrf in mrfs:
+                if doystring in str(mrf):
+                    print(f'{mrf} exists - skipping\n')
+                    skip = True
+                    break
+            if skip:
+                continue
+                
             output_file = str(Path(config.working_dir).absolute()) \
                         + '/' + str(Path(input_file).stem) + '_' + var + datestring + '.tiff'
-            print('Creating GeoTIFF file ' + output_file)
+            print('\nCreating GeoTIFF file ' + output_file)
 
             if not os.path.isfile(output_file):
                 extents = config.extents.split(',')
                 gdal_translate = ['gdal_translate', '-of', 'GTiff', '-a_srs', projection, '-a_ullr',
-                                  extents[0], extents[3], extents[2], extents[1]]
+                                  extents[0], extents[1], extents[2], extents[3]]
                 if hasattr(config, 'nodata'):
                     gdal_translate.append('-a_nodata')
                     gdal_translate.append(str(config.nodata))
@@ -103,22 +117,22 @@ def zarr2tiff(input_file, config, process_existing=False, limit=-1, create_cog=F
                     print(error.decode())
                 print('Created GeoTIFF ' + output_file)
 
-                if config.is360:
-                    print('Converting coordinates from 0 - 360 to -180 - 180')
-                    output_file_360 = output_file.replace('.tiff', '_360.tiff')
-                    print('Creating GeoTIFF file ' + output_file_360)
-                    gdal_warp = ['gdalwarp', '-t_srs', 'WGS84', '-te', '-180', '-90', '180', '90', output_file,
-                                 output_file_360, '-wo', 'SOURCE_EXTRA=1000', '--config', 'CENTER_LONG', '0']
-                    print(gdal_warp)
-                    process = subprocess.Popen(gdal_warp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                    process.wait()
-                    for output in process.stdout:
-                        print(output.decode())
-                    for error in process.stderr:
-                        print(error.decode())
-                    print('Created GeoTIFF ' + output_file_360)
-                    shutil.move(output_file_360, output_file)
-                    print('Replaced ' + output_file)
+                # TODO: Check if we need to flip y-axis
+                print('Converting coordinates from 0 - 360 to -180 - 180')
+                output_file_360 = output_file.replace('.tiff', '_360.tiff')
+                print('Creating GeoTIFF file ' + output_file_360)
+                gdal_warp = ['gdalwarp', '-t_srs', 'WGS84', '-te', '-180', '-90', '180', '90', output_file,
+                             output_file_360]
+                print(gdal_warp)
+                process = subprocess.Popen(gdal_warp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                process.wait()
+                for output in process.stdout:
+                    print(output.decode())
+                for error in process.stderr:
+                    print(error.decode())
+                print('Created GeoTIFF ' + output_file_360)
+                shutil.move(output_file_360, output_file)
+                print('Replaced ' + output_file)
 
             if create_cog:
                 cog_file = str(Path(config.working_dir).absolute()) \
@@ -446,7 +460,7 @@ def create_mrf(input_files, config, layer_name, colormap, empty_tile):
                                                               s3_url.netloc,
                                                               s3_path_idx)
                         print(data_response)
-                        os.remove(output_dir + '/' + mrf_file)
+#                         os.remove(output_dir + '/' + mrf_file)
                         os.remove(output_dir + '/' + data_file)
                         if config.idx_dir is None:
                             os.remove(output_dir + '/' + idx_file)
