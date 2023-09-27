@@ -118,7 +118,7 @@ def zarr2tiff(input_file, config, process_existing=False, limit=-1, create_cog=F
                 print('Created GeoTIFF ' + output_file)
 
                 # TODO: Check if we need to flip y-axis
-                print('Converting coordinates from 0 - 360 to -180 - 180')
+                print('Flipping y-axis')
                 output_file_360 = output_file.replace('.tiff', '_360.tiff')
                 print('Creating GeoTIFF file ' + output_file_360)
                 gdal_warp = ['gdalwarp', '-t_srs', 'WGS84', '-te', '-180', '-90', '180', '90', output_file,
@@ -131,7 +131,11 @@ def zarr2tiff(input_file, config, process_existing=False, limit=-1, create_cog=F
                 for error in process.stderr:
                     print(error.decode())
                 print('Created GeoTIFF ' + output_file_360)
-                shutil.move(output_file_360, output_file)
+                try:
+                    shutil.move(output_file_360, output_file)
+                except FileNotFoundError as ex:
+                    print(ex)
+                    continue
                 print('Replaced ' + output_file)
 
             if create_cog:
@@ -478,8 +482,11 @@ def create_mrf(input_files, config, layer_name, colormap, empty_tile):
 
         except FileNotFoundError as ex:
             print(ex)
-        print('Deleting file ' + mrf_config)
-        os.remove(mrf_config)
+        try:
+            print('Deleting file ' + mrf_config)
+            os.remove(mrf_config)
+        except FileNotFoundError as ex:
+            print(ex)
 
 
 if __name__ == '__main__':
