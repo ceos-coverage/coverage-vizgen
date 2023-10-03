@@ -12,5 +12,5 @@ Fiona==1.9.4
 Shapely==2.0.1
 Rtree==1.0.1
 mapbox-vector-tile==2.0.1
-urllib3==1.26.16
+urllib3==1.26.17
 zarr==2.16.1
