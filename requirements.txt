@@ -1,6 +1,6 @@
 pathlib==1.0.1
 pyaml==23.9.3
-Pillow==9.3.0
+Pillow==10.0.1
 pypng==0.20220715.0
 awscli==1.29.42
 boto3==1.28.42
