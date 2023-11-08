@@ -69,6 +69,7 @@ coverage-vizgen uses a YAML dataset configuration file to specify settings for p
 * `s3_prefix` - S3 URI to upload MRFs to (if specified)
 * `idx_dir` - OnEarth idx directory to move MRF idx files to (if specified)
 * `is360` - Convert dataset from 0-360 bounds to -180 - 180 if true
+* `center_long` - The center longitude when convert from 0-360 (default: 0)
 * `speed_vars` - List of `u` and `v` variables to use for converting to speed
 
 ### Example Configurations

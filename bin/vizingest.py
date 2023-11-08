@@ -61,6 +61,7 @@ class LayerConfig():
         self.s3_prefix = layer_config.get('s3_prefix')
         self.idx_dir = layer_config.get('idx_dir')
         self.is360 = layer_config.get('is360', False)
+        self.center_long = layer_config.get('center_long', 0)
         self.speed_vars = layer_config.get('speed_vars')
 
     def __str__(self):

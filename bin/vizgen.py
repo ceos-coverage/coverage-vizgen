@@ -23,6 +23,7 @@ import shutil
 import string
 import boto3
 import zarr
+import xarray as xr
 from botocore.exceptions import ClientError, NoCredentialsError
 from pathlib import Path
 from datetime import datetime
@@ -260,6 +261,14 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
             config.reproject = ''
 
         counter += 1
+        if len(config.time_bands) <= 1:
+            # check for internal time dimension
+            dataset = xr.open_dataset(input_file)
+            time_dimension = dataset['time']
+            if len(time_dimension.values) > 1:
+                config.time_bands = [datetime.strptime(str(item)[:-4], '%Y-%m-%dT%H:%M:%S.%f') for item in time_dimension.values]
+            dataset.close()
+        print('Using time bands: ' + str(config.time_bands))
         for band, time in enumerate(config.time_bands):
             if time != '':
                 bandstring = '_b' + str(band+1)
@@ -296,7 +305,8 @@ def nc2tiff(input_file, config, process_existing=False, limit=-1, create_cog=Fal
                         output_file_360 = output_file.replace('.tiff', '_360.tiff')
                         print('Creating GeoTIFF file ' + output_file_360)
                         gdal_warp = ['gdalwarp', '-t_srs', 'WGS84', '-te', '-180', '-90', '180', '90', output_file,
-                                     output_file_360, '-wo', 'SOURCE_EXTRA=1000', '--config', 'CENTER_LONG', '0']
+                                     output_file_360, '-wo', 'SOURCE_EXTRA=1000', '--config',
+                                     'CENTER_LONG', str(config.center_long)]
                         print(gdal_warp)
                         process = subprocess.Popen(gdal_warp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
                         process.wait()
@@ -400,12 +410,20 @@ def create_mrf(input_files, config, layer_name, colormap, empty_tile):
                     else:
                         raise
             date_of_data = date.strftime('%Y%m%d')
-            print('Detected date: ' + date_of_data)
             time_of_data = date.strftime('%H%M%S')
             if config.time_bands != [''] and '_b' in filename:
                 band = int(filename.split('_b')[1].split('_')[0]) - 1
                 addtime = config.time_bands[band]
-                time_of_data = (date + timedelta(seconds=addtime)).strftime('%H%M%S')
+                # determine if sub-daily
+                if len(config.time_bands) > 1:
+                    if not str(config.time_bands[0]).isnumeric():
+                        date_of_data = config.time_bands[band].strftime('%Y%m%d')
+                        time_of_data = config.time_bands[band].strftime('%H%M%S')
+                    elif config.time_bands[1] - config.time_bands[0] > 366:
+                        time_of_data = (date + timedelta(seconds=addtime)).strftime('%H%M%S')
+                    else:
+                        date_of_data = (date + timedelta(days=addtime-1)).strftime('%Y%m%d')
+            print('Detected date: ' + date_of_data)
             output_dir = config.output_dir + '/' + layer_name + '/' + str(date.year)
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
