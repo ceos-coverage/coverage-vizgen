@@ -390,7 +390,7 @@ def create_mrf(input_files, config, layer_name, colormap, empty_tile):
         print('Generating MRF config ' + mrf_config)
         with open(mrf_config, 'w') as conf:
             xml = MRF_CONFIG_TEMPLATE
-            match = re.findall(r'(\d{4}[_-]\d{2,}[_-]\d{2,})|(\d{4}[_-]\d{2,})', str(filename))
+            match = re.findall(r'(\d{4}[_-]*\d{2,}[_-]*\d{2,})|(\d{4}[_-]*\d{2,})', str(filename))
             if len(match) > 0:
                 for m in match[0]:
                     if m != '':
